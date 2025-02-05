@@ -207,13 +207,14 @@ class Actor(nn.Module):
 
         output = self.model(sequences, attention_mask=attention_mask, position_ids=position_ids)
         # https://github.com/OpenRLHF/OpenRLHF/pull/634
-        output["logits"] = output["logits"].to(torch.float32)
+        # output["logits"] = output["logits"].to(torch.float32)  # OPTIM_CHANGE: numerically unstable, but requires 8.4GB less VRAM
 
         if num_actions is None:
             assert return_output
             return output
 
-        log_probs = log_probs_from_logits(output["logits"][:, :-1, :], sequences[:, 1:])
+        # log_probs = log_probs_from_logits(output["logits"][:, :-1, :], sequences[:, 1:])  # OPTIM_CHANGE: see above; cast to float32, in case there is an assumption
+        log_probs = log_probs_from_logits(output["logits"][:, :-1, :], sequences[:, 1:]).to(torch.float32)  # OPTIM_CHANGE
 
         if not self.packing_samples:
             action_log_probs = log_probs[:, -num_actions:]
